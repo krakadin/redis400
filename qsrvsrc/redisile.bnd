@@ -1,0 +1,6 @@
+STRPGMEXP PGMLVL(*CURRENT)
+    EXPORT SYMBOL("getRedisValue")
+    EXPORT SYMBOL("setRedisValue")
+    EXPORT SYMBOL("incrRedisValue")
+    EXPORT SYMBOL("delRedisKey")
+ENDPGMEXP
