@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/QOpenSys/pkgs/bin/bash
 
 # Path to .env file (adjust if needed)
 ENV_FILE=".env"
