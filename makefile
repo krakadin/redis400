@@ -1,7 +1,7 @@
 # Configuration
 SRC_DIR = srcfile
 BND_DIR = qsrvsrc
-TGT_LIB = ER4002
+TGT_LIB = REDIS400
 DBG_VIEW = *NONE
 CCSID = 1252 # Windows, Latin 1
 
@@ -19,7 +19,7 @@ redisutils.cle: redisutils.cmodule redisutils.bnd
 preflight:
 	@if system -s "CHKOBJ OBJ($(TGT_LIB)) OBJTYPE(*LIB)"; then \
 		echo "Error: Library $(TGT_LIB) already exists. Please delete it with 'DLTLIB LIB($(TGT_LIB))' and retry."; \
-		exit 0; \
+		exit 1; \
 	else \
 		echo "No existing $(TGT_LIB) library found - proceeding."; \
 		exit 0; \
