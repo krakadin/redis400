@@ -210,8 +210,8 @@ void SQL_API_FN delRedisKey(
         strcpy(msgtext, "Failed to extract payload from Redis response");
         *resultInd = -1;
     }
-    if (payload)
-        free(payload);
+    //if (payload)
+    //    free(payload);
 
     close(sockfd);
 }

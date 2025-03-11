@@ -52,7 +52,7 @@ void SQL_API_FN getRedisValue(
     SQLUDF_NULLIND *nullind)  // Additional null indicators for DB2SQL
 {
     int sockfd;
-    char ebcdic_send_buf[1024], ascii_send_buf[1024], recv_buf[32768], ebcdic_payload[32768];
+    char ebcdic_send_buf[1024], ascii_send_buf[1024], recv_buf[16370], ebcdic_payload[16370];
     char ebcdic_len[10] = {0};
     int len, total_len = 0;
 
@@ -233,8 +233,8 @@ void SQL_API_FN getRedisValue(
         strcpy(msgtext, "Failed to extract payload from Redis response");
         *valueInd = -1;
     }
-    if (payload)
-        free(payload); // Free allocated memory
+    //if (payload)
+    //    free(payload); // Free allocated memory
 
     close(sockfd);
 }

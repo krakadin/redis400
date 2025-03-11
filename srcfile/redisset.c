@@ -28,7 +28,7 @@
  * Description: SQL external function to set a value in Redis.
  * Parameters:
  *   - key: Input Redis key (VARCHAR(255), EBCDIC).
- *   - value: Input Redis value (VARCHAR(32740), EBCDIC).
+ *   - value: Input Redis value (VARCHAR(16370), EBCDIC).
  *   - response: Output Redis response (VARCHAR(128), EBCDIC).
  *   - keyInd: Null indicator for the key.
  *   - valueInd: Null indicator for the value.
@@ -42,7 +42,7 @@
  */
 void SQL_API_FN setRedisValue(
 	SQLUDF_VARCHAR *key,		 // Input: Redis key (VARCHAR(255), EBCDIC)
-	SQLUDF_VARCHAR *value,		 // Input: Redis value (VARCHAR(32740), EBCDIC)
+	SQLUDF_VARCHAR *value,		 // Input: Redis value (VARCHAR(16370), EBCDIC)
 	SQLUDF_VARCHAR *response,	 // Output: Redis response (VARCHAR(128), EBCDIC)
 	SQLUDF_NULLIND *keyInd,		 // Null indicator for key
 	SQLUDF_NULLIND *valueInd,	 // Null indicator for value
@@ -134,10 +134,10 @@ void SQL_API_FN setRedisValue(
 		}
 	}
 
-	// Calculate and format value length in EBCDIC (up to 32740 bytes)
+	// Calculate and format value length in EBCDIC (up to 16370 bytes)
 	int value_len = strlen(value);
-	if (value_len > 32740)
-		value_len = 32740; // Truncate to match VARCHAR(32740)
+	if (value_len > 16370)
+		value_len = 16370; // Truncate to match VARCHAR(16370)
 	if (value_len < 10)
 	{
 		ebcdic_value_len[0] = 0xF0 + value_len;
@@ -170,7 +170,7 @@ void SQL_API_FN setRedisValue(
 	strcat(ebcdic_send_buf, "\x0D\x25\x5B");
 	strcat(ebcdic_send_buf, ebcdic_value_len);
 	strcat(ebcdic_send_buf, "\x0D\x25");
-	strncat(ebcdic_send_buf, value, value_len); // Use strncat to limit to 32740 bytes
+	strncat(ebcdic_send_buf, value, value_len); // Use strncat to limit to 16370 bytes
 	strcat(ebcdic_send_buf, "\x0D\x25");
 
 	// Log EBCDIC command for debugging
@@ -284,8 +284,8 @@ void SQL_API_FN setRedisValue(
 		snprintf(msgtext, 512, "Failed to extract payload from Redis response: EBCDIC=%.462s...", ebcdic_payload);
 		*responseInd = -1;
 	}
-	if (payload)
-		free(payload);
+	//if (payload)
+	//	free(payload);
 
 	close(sockfd);
 }
