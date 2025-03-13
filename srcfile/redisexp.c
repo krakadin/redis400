@@ -16,54 +16,23 @@
 #include <string.h>
 #include <errno.h>
 
-/**********************************************************************/
-/* SQL External Function: EXPIRE */
-/**********************************************************************/
-
-/**
- * Function: expireRedisKey
- * Description: SQL external function to set an expiration time for a Redis key.
- * Parameters:
- *   - key: Input Redis key (VARCHAR(255), EBCDIC).
- *   - ttl: Input time-to-live in seconds (INTEGER).
- *   - result: Output result (SMALLINT, 1 if expiration set, 0 if key does not exist).
- *   - keyInd: Null indicator for the input key.
- *   - ttlInd: Null indicator for the input TTL.
- *   - resultInd: Null indicator for the output result.
- *   - sqlstate: SQLSTATE (5 chars, e.g., "00000").
- *   - funcname: Fully qualified function name.
- *   - specname: Specific name.
- *   - msgtext: Error message text (up to 70 chars).
- *   - sqlcode: SQLCODE (optional, not used here).
- *   - nullind: Additional null indicators for DB2SQL.
- */
 void SQL_API_FN expireRedisKey(
-	SQLUDF_VARCHAR *key,	   // Input: Redis key (VARCHAR(255), EBCDIC)
-	SQLUDF_INTEGER *ttl,	   // Input: TTL in seconds (INTEGER)
-	SQLUDF_SMALLINT *result,   // Output: Result (SMALLINT, 1 or 0)
-	SQLUDF_NULLIND *keyInd,	   // Null indicator for input key
-	SQLUDF_NULLIND *ttlInd,	   // Null indicator for input TTL
-	SQLUDF_NULLIND *resultInd, // Null indicator for output result
-	char *sqlstate,			   // SQLSTATE (5 chars, e.g., "00000")
-	char *funcname,			   // Fully qualified function name
-	char *specname,			   // Specific name
-	char *msgtext,			   // Error message text (up to 70 chars)
-	short *sqlcode,			   // SQLCODE (optional, not used here)
-	SQLUDF_NULLIND *nullind)   // Additional null indicators for DB2SQL
+	SQLUDF_VARCHAR *key, SQLUDF_INTEGER *ttl, SQLUDF_SMALLINT *result,
+	SQLUDF_NULLIND *keyInd, SQLUDF_NULLIND *ttlInd, SQLUDF_NULLIND *resultInd,
+	char *sqlstate, char *funcname, char *specname, char *msgtext,
+	short *sqlcode, SQLUDF_NULLIND *nullind)
 {
 	int sockfd;
 	char ebcdic_send_buf[512], ascii_send_buf[512], recv_buf[1024], ebcdic_payload[1024];
 	char ebcdic_key_len[10] = {0}, ebcdic_ttl_len[10] = {0};
 	int len, total_len = 0;
 
-	// Initialize SQLSTATE to success
 	strncpy(sqlstate, "00000", 5);
 	sqlstate[5] = '\0';
 	msgtext[0] = '\0';
 	*result = 0;
 	*resultInd = 0;
 
-	// Check for NULL or invalid inputs
 	if (*keyInd < 0)
 	{
 		strncpy(sqlstate, "38001", 5);
@@ -86,7 +55,6 @@ void SQL_API_FN expireRedisKey(
 		return;
 	}
 
-	// Connect to Redis
 	if (connect_to_redis(&sockfd) != 0)
 	{
 		strncpy(sqlstate, "38901", 5);
@@ -95,14 +63,11 @@ void SQL_API_FN expireRedisKey(
 		return;
 	}
 
-	// Format Redis EXPIRE command in EBCDIC
 	ebcdic_send_buf[0] = '\0';
 	int key_len = strlen(key);
 	if (key_len > 255)
-		key_len = 255;							 // Truncate to match VARCHAR(255)
-	int ttl_len = snprintf(NULL, 0, "%d", *ttl); // Get TTL string length
+		key_len = 255;
 
-	// Format key length in EBCDIC
 	if (key_len < 10)
 	{
 		ebcdic_key_len[0] = 0xF0 + key_len;
@@ -125,7 +90,12 @@ void SQL_API_FN expireRedisKey(
 		}
 	}
 
-	// Format TTL length in EBCDIC
+	char ttl_str[11] = {0};
+	snprintf(ttl_str, sizeof(ttl_str), "%d", *ttl);
+	int ttl_len = strlen(ttl_str);
+	for (int i = 0; i < ttl_len; i++)
+		ttl_str[i] = ttl_str[i] - '0' + 0xF0;
+
 	if (ttl_len < 10)
 	{
 		ebcdic_ttl_len[0] = 0xF0 + ttl_len;
@@ -148,23 +118,17 @@ void SQL_API_FN expireRedisKey(
 		}
 	}
 
-	// Build EXPIRE command in EBCDIC: "*3\r\n$6\r\nEXPIRE\r\n$<key_len>\r\n<key>\r\n$<ttl_len>\r\n<ttl>\r\n"
-	strcat(ebcdic_send_buf, "\x5C\xF3\x0D\x25\x5B\xF6\x0D\x25\xC5\xE7\xD7\xC9\xD9\xC5\x0D\x25"); // EBCDIC "*3\r\n$6\r\nEXPIRE\r\n"
+	strcat(ebcdic_send_buf, "\x5C\xF3\x0D\x25\x5B\xF6\x0D\x25\xC5\xE7\xD7\xC9\xD9\xC5\x0D\x25"); // *3\r\n$6\r\nEXPIRE\r\n
 	strcat(ebcdic_send_buf, "\x5B");
 	strcat(ebcdic_send_buf, ebcdic_key_len);
 	strcat(ebcdic_send_buf, "\x0D\x25");
-	strncat(ebcdic_send_buf, key, key_len); // Limit to 255 bytes
+	strncat(ebcdic_send_buf, key, key_len);
 	strcat(ebcdic_send_buf, "\x0D\x25\x5B");
 	strcat(ebcdic_send_buf, ebcdic_ttl_len);
 	strcat(ebcdic_send_buf, "\x0D\x25");
-	char ttl_str[11];
-	snprintf(ttl_str, sizeof(ttl_str), "%d", *ttl);
-	for (int i = 0; ttl_str[i]; i++)
-		ttl_str[i] = ttl_str[i] - '0' + 0xF0; // ASCII to EBCDIC digits
 	strcat(ebcdic_send_buf, ttl_str);
 	strcat(ebcdic_send_buf, "\x0D\x25");
 
-	// Convert to ASCII
 	ascii_send_buf[0] = '\0';
 	size_t ebcdic_len_size = strlen(ebcdic_send_buf);
 	if (ConvertToASCII(ebcdic_send_buf, ebcdic_len_size, ascii_send_buf, sizeof(ascii_send_buf) - 1) < 0)
@@ -175,9 +139,7 @@ void SQL_API_FN expireRedisKey(
 		close(sockfd);
 		return;
 	}
-	ascii_send_buf[ebcdic_len_size] = '\0';
 
-	// Send EXPIRE command to Redis
 	len = send(sockfd, ascii_send_buf, strlen(ascii_send_buf), 0);
 	if (len < 0)
 	{
@@ -188,7 +150,6 @@ void SQL_API_FN expireRedisKey(
 		return;
 	}
 
-	// Receive response from Redis
 	len = recv(sockfd, recv_buf, sizeof(recv_buf) - 1, 0);
 	if (len < 0)
 	{
@@ -211,7 +172,6 @@ void SQL_API_FN expireRedisKey(
 	total_len = len;
 	recv_buf[total_len] = '\0';
 
-	// Convert ASCII response to EBCDIC
 	if (ConvertToEBCDIC(recv_buf, total_len, ebcdic_payload, sizeof(ebcdic_payload) - 1) < 0)
 	{
 		strncpy(sqlstate, "38907", 5);
@@ -220,9 +180,7 @@ void SQL_API_FN expireRedisKey(
 		close(sockfd);
 		return;
 	}
-	ebcdic_payload[total_len] = '\0';
 
-	// Extract Redis response
 	char *payload = NULL;
 	size_t payload_length;
 	if (extract_redis_payload(ebcdic_payload, &payload, &payload_length) == 0)
@@ -230,13 +188,13 @@ void SQL_API_FN expireRedisKey(
 		if (payload_length == 1)
 		{
 			if (payload[0] == '\xF1')
-				*result = 1; // EBCDIC '1'
+				*result = 1;
 			else if (payload[0] == '\xF0')
-				*result = 0; // EBCDIC '0'
+				*result = 0;
 			else
 			{
 				strncpy(sqlstate, "38908", 5);
-				snprintf(msgtext, 70, "Unexpected Redis response: %.1s", payload);
+				snprintf(msgtext, 70, "Unexpected response: %.1s", payload);
 				*resultInd = -1;
 			}
 		}
