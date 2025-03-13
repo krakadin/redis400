@@ -8,6 +8,8 @@ This project provides Redis utility functions for IBM i, enabling seamless inter
 2. **`REDIS_SET`**: Sets a value in Redis using a key-value pair.
 3. **`REDIS_INCR`**: Increments the integer value of a key by 1. If the key does not exist, it is set to 0 before performing the operation.
 4. **`REDIS_DEL`**: Deletes a key from Redis. Returns 1 if the key was deleted, or 0 if the key did not exist.
+5. **`REDIS_EXPIRE`** (New as of March 12, 2025): Sets an expiration time (TTL) in seconds for a Redis key.
+6. **`REDIS_TTL`** (New as of March 12, 2025): Retrieves the remaining time-to-live (TTL) of a Redis key in seconds.
 
 Built with a Makefile, the project automates compilation, binding, and deployment of these functions, making it easy to integrate Redis caching or storage into IBM i applications.
 
@@ -50,12 +52,16 @@ The project is organized as follows:
     - `redisset.c`        # Source for REDIS_SET function
     - `redisincr.c`       # Source for REDIS_INCR function
     - `redisdel.c`        # Source for REDIS_DEL function
+    - `redisexp.c`        # Source for REDIS_EXPIRE function (added March 12, 2025)
+    - `redisttl.c`        # Source for REDIS_TTL function (added March 12, 2025)
     - `redisutils.c`      # Shared utility functions
   - `qsrvsrc/`              # Binding source files
     - `redisget.bnd`      # Binding source for REDIS_GET
     - `redisset.bnd`      # Binding source for REDIS_SET
     - `redisincr.bnd`     # Binding source for REDIS_INCR
     - `redisdel.bnd`      # Binding source for REDIS_DEL
+    - `redisexp.bnd`      # Binding source for REDIS_EXPIRE (add this file)
+    - `redisttl.bnd`      # Binding source for REDIS_TTL (add this file)
     - `redisutils.bnd`    # Binding source for shared utilities
   - `include/`              # Header files
     - `redis_utils.h`     # Header for shared utilities
@@ -78,6 +84,8 @@ The Makefile provides the following targets to manage the build process:
 | `redis_set.func`  | Creates or replaces the `REDIS_SET` SQL function.                          |
 | `redis_incr.func` | Creates or replaces the `REDIS_INCR` SQL function.                         |
 | `redis_del.func`  | Creates or replaces the `REDIS_DEL` SQL function.                          |
+| `redis_exp.func`  | Creates or replaces the `REDIS_EXPIRE` SQL function (added March 12, 2025).|
+| `redis_ttl.func`  | Creates or replaces the `REDIS_TTL` SQL function (added March 12, 2025).   |
 | `clean`           | Deletes the target library and all associated objects.                     |
 
 ---
@@ -115,11 +123,13 @@ When you run `gmake`, the following steps are executed:
 
 2. **Compile the C Modules into ILE Modules**:
 
-   - The C source files (`redisget.c`, `redisset.c`, `redisincr.c`, `redisdel.c`, and `redisutils.c`) are compiled into ILE modules:
+   - The C source files (redisget.c, redisset.c, redisincr.c, redisdel.c, redisexp.c, redisttl.c, and redisutils.c) are compiled into ILE modules:
      - `REDISGET`
      - `REDISSET`
      - `REDISINCR`
      - `REDISDEL`
+     - `REDISEXP`
+     - `REDISTTL`
      - `REDISUTILS`
 
 3. **Create the Service Program (`redisile.srvpgm`)**:
@@ -127,7 +137,7 @@ When you run `gmake`, the following steps are executed:
    - The compiled modules are bound together to create the service program `REDISILE`.
 
 4. **Create the SQL Functions**:
-   - The SQL functions `REDIS_GET` and `REDIS_SET` are created or replaced in the target library.
+   - The SQL functions `REDIS_GET`, `REDIS_SET`, `REDIS_INCR`, `REDIS_DEL`, `REDIS_EXPIRE`, and `REDIS_TTL` are created or replaced in the target library.
 
 **Note**: If the execution failes due errors in `generate_config.sh`, you may need to modify git settings `core.autocrlf`
 
@@ -147,6 +157,8 @@ After the build process completes, verify the following objects in the target li
 - `REDISSET`
 - `REDISINCR`
 - `REDISDEL`
+- `REDISEXP`
+- `REDISTTL`
 - `REDISUTILS`
 
 ### Service Program
@@ -159,6 +171,8 @@ After the build process completes, verify the following objects in the target li
 - `REDIS_SET`
 - `REDIS_INCR`
 - `REDIS_DEL`
+- `REDIS_EXPIRE`
+- `REDIS_TTL`
 
 ---
 
@@ -169,6 +183,8 @@ After the build process completes, verify the following objects in the target li
       DSPOBJD OBJ(REDIS400/REDISSET) OBJTYPE(*MODULE)
       DSPOBJD OBJ(REDIS400/REDISINCR) OBJTYPE(*MODULE)
       DSPOBJD OBJ(REDIS400/REDISDEL) OBJTYPE(*MODULE)
+      DSPOBJD OBJ(REDIS400/REDISEXP) OBJTYPE(*MODULE)
+      DSPOBJD OBJ(REDIS400/REDISTTL) OBJTYPE(*MODULE)
       DSPOBJD OBJ(REDIS400/REDISUTILS) OBJTYPE(\*MODULE)
    ```
 
@@ -185,6 +201,8 @@ After the build process completes, verify the following objects in the target li
    SELECT FROM QSYS2.SYSFUNCS WHERE SPECIFIC_NAME = 'REDIS_SET');
    SELECT FROM QSYS2.SYSFUNCS WHERE SPECIFIC_NAME = 'REDIS_INCR');
    SELECT FROM QSYS2.SYSFUNCS WHERE SPECIFIC_NAME = 'REDIS_DEL');
+   SELECT * FROM QSYS2.SYSFUNCS WHERE SPECIFIC_NAME = 'REDIS_EXPIRE';
+   SELECT * FROM QSYS2.SYSFUNCS WHERE SPECIFIC_NAME = 'REDIS_TTL';
    ```
 
 ## Cleaning Up
@@ -206,6 +224,9 @@ Once built, use the SQL functions in your IBM i SQL queries to interact with Red
 - Retrieve a Value (REDIS_GET): Use this function to get a value associated with a key from Redis.
 - Set a Value (REDIS_SET): Use this function to set a key-value pair in Redis.
 - Increment a Value (REDIS_INCR): Use this function to increment the integer value of a key by 1.
+- Delete a Key (REDIS_DEL): Remove a key from Redis.
+- Set Expiration (REDIS_EXPIRE): Assign a time-to-live (TTL) to a key.
+- Check TTL (REDIS_TTL): Retrieve the remaining time-to-live of a key.
 
 ### Examples
 
@@ -232,6 +253,22 @@ SET ORDER_NO = REDIS_INCR('ORDER#');
 ```sql
 VALUES REDIS_DEL('API_KEY');
 ```
+
+#### Using REDIS_EXPIRE
+
+```sql
+SELECT REDIS_EXPIRE('API_KEY', 300) FROM SYSIBM.SYSDUMMY1;
+```
+
+- Sets API_KEY to expire in 300 seconds (5 minutes). Returns 1 if successful, 0 if the key doesn’t exist.
+
+#### Using REDIS_TTL
+
+```sql
+SELECT REDIS_TTL('API_KEY') FROM SYSIBM.SYSDUMMY1;
+```
+
+- Returns the remaining TTL in seconds (e.g., 298), -1 if no expiration, or -2 if the key doesn’t exist.
 
 ### Notes
 
@@ -299,5 +336,5 @@ Contributions are welcome! To contribute to this project:
 
 ### Additional Notes
 
-- Roadmap: Future enhancements may include additional Redis commands (e.g., `APPEND`, `AUTH`, `SCAN`, `TTL`,`EXPIRE`), Python integration, and improved error handling.
+- Roadmap: Future enhancements may include additional Redis commands (e.g., `APPEND`, `AUTH`, `SCAN`), Python integration, and improved error handling.
 - Acknowledgments: Thanks to the IBM i and Redis communities for their tools and support.
