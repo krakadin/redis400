@@ -1,6 +1,7 @@
-STRPGMEXP PGMLVL(*CURRENT)
+STRPGMEXP SIGNATURE("Redis 1.0.0")
     EXPORT SYMBOL("getRedisValue")
     EXPORT SYMBOL("setRedisValue")
     EXPORT SYMBOL("incrRedisValue")
     EXPORT SYMBOL("delRedisKey")
+    EXPORT SYMBOL("expireRedisKey")
 ENDPGMEXP

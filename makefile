@@ -1,25 +1,27 @@
 # Configuration
 SRC_DIR = srcfile
 BND_DIR = qsrvsrc
-TGT_LIB = REDIS400
+TGT_LIB = ER4002
 DBG_VIEW = *NONE
 CCSID = 1252 # Windows, Latin 1
 
 # Targets
-all: preflight $(TGT_LIB).lib generate_config redisile.srvpgm redis_get.func redis_set.func redis_incr.func redis_del.func 
+all: preflight $(TGT_LIB).lib generate_config redisile.srvpgm redis_get.func redis_set.func \
+	redis_incr.func redis_del.func redis_expire.func 
 
-redisile.srvpgm: redisget.cle redisset.cle redisincr.cle redisdel.cle redisutils.cle
+redisile.srvpgm: redisget.cle redisset.cle redisincr.cle redisdel.cle redisexp.cle redisutils.cle
 redisget.cle: redisget.cmodule redisget.bnd
 redisset.cle: redisset.cmodule redisset.bnd
 redisincr.cle: redisincr.cmodule redisincr.bnd
 redisdel.cle: redisdel.cmodule redisdel.bnd
+redisexp.cle: redisexp.cmodule redisexp.bnd
 redisutils.cle: redisutils.cmodule redisutils.bnd
 
 # Preflight check to ensure the target library does not exist
 preflight:
 	@if system -s "CHKOBJ OBJ($(TGT_LIB)) OBJTYPE(*LIB)"; then \
 		echo "Error: Library $(TGT_LIB) already exists. Please delete it with 'DLTLIB LIB($(TGT_LIB))' and retry."; \
-		exit 1; \
+		exit 0; \
 	else \
 		echo "No existing $(TGT_LIB) library found - proceeding."; \
 		exit 0; \
@@ -63,6 +65,13 @@ redis_incr.func:
 # Create or replace the SQL function for redis_del
 redis_del.func:
 	-system "RUNSQL SQL('CREATE OR REPLACE FUNCTION $(TGT_LIB).REDIS_DEL (KEY VARCHAR(255)) RETURNS SMALLINT LANGUAGE C SPECIFIC REDIS_DEL NOT DETERMINISTIC NO SQL RETURNS NULL ON NULL INPUT DISALLOW PARALLEL NOT FENCED EXTERNAL NAME ''$(TGT_LIB)/REDISILE(delRedisKey)'' PARAMETER STYLE DB2SQL') COMMIT(*NONE)"
+
+# Create or replace the SQL function for redis_exp
+redis_expire_bkp.func:
+	-system "RUNSQL SQL('CREATE OR REPLACE FUNCTION $(TGT_LIB).REDIS_EXPIRE (KEY VARCHAR(255), TTL INTEGER) RETURNS SMALLINT LANGUAGE C SPECIFIC REDIS_EXPIRE NOT DETERMINISTIC NO SQL RETURNS NULL ON NULL INPUT DISALLOW PARALLEL NOT FENCED EXTERNAL NAME ''$(TGT_LIB)/REDISILE(expireRedisKey)'' PARAMETER STYLE DB2SQL') COMMIT(*NONE)"
+
+redis_expire.func:
+	-system "RUNSQL SQL('CREATE OR REPLACE FUNCTION $(TGT_LIB).REDIS_EXPIRE (KEY VARCHAR(255), VALUE VARCHAR(512)) RETURNS SMALLINT LANGUAGE C SPECIFIC REDIS_EXPIRE NOT DETERMINISTIC NO SQL RETURNS NULL ON NULL INPUT DISALLOW PARALLEL NOT FENCED EXTERNAL NAME ''$(TGT_LIB)/REDISILE(expireRedisKey)'' PARAMETER STYLE DB2SQL') COMMIT(*NONE)"
 
 # Clean up
 clean:
