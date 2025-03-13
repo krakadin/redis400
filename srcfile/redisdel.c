@@ -1,5 +1,5 @@
 /******************************************************************************
- * File: redisincr.c
+ * File: redisdel.c
  * Author: Ernest Rozloznik (e@er400.io)
  * Date: 2025-02-22
  * Description: Implementation of the Redis DEL function for IBM i.
@@ -210,8 +210,8 @@ void SQL_API_FN delRedisKey(
         strcpy(msgtext, "Failed to extract payload from Redis response");
         *resultInd = -1;
     }
-    //if (payload)
-    //    free(payload);
+    // if (payload)
+    //     free(payload);
 
     close(sockfd);
 }

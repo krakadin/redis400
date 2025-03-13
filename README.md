@@ -129,6 +129,12 @@ When you run `gmake`, the following steps are executed:
 4. **Create the SQL Functions**:
    - The SQL functions `REDIS_GET` and `REDIS_SET` are created or replaced in the target library.
 
+**Note**: If the execution failes due errors in `generate_config.sh`, you may need to modify git settings `core.autocrlf`
+
+```bash
+git config --global core.autocrlf input
+```
+
 ---
 
 ## Verify the Build
