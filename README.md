@@ -10,7 +10,7 @@ This project provides Redis utility functions for IBM i, enabling seamless inter
 4. **`REDIS_DEL`**: Deletes a key from Redis. Returns 1 if the key was deleted, or 0 if the key did not exist.
 5. **`REDIS_EXPIRE`** (New as of March 12, 2025): Sets an expiration time (TTL) in seconds for a Redis key.
 6. **`REDIS_TTL`** (New as of March 12, 2025): Retrieves the remaining time-to-live (TTL) of a Redis key in seconds.
-7. **`REDIS_PING`** (New as of March 30, 2025): Sends a `PING` command to the Redis server and returns the response (`PONG`) in EBCDIC. Useful for testing connectivity to the Redis server.
+7. **`REDIS_PING`** (New as of March 30, 2025): Sends a `PING` command to the Redis server and returns the response (`PONG`). Useful for testing connectivity to the Redis server.
 
 Built with a Makefile, the project automates compilation, binding, and deployment of these functions, making it easy to integrate Redis caching or storage into IBM i applications.
 
@@ -37,7 +37,7 @@ Before building and using the project, ensure you have the following:
 
 - **IBM i Access**: Access to an IBM i system with development tools (e.g., ILE C compiler, SQL).
 - **Redis Server**: A Redis server running and accessible from the IBM i system (default: `127.0.0.1:6379`).
-- **GCC for PASE**: Required for compiling C modules in PASE, if applicable (install via `yum install gcc` in PASE).
+- **Compiler - ILE C**: Required for compiling C modules in ILE. (5770WDS 51 2911 Compiler - ILE C)
 - **Makefile Support**: Ensure the `make` command is available (install via `yum install make` in PASE, if needed).
 - **Git**: For cloning the repository (optional, but recommended).
 
@@ -55,7 +55,7 @@ The project is organized as follows:
     - `redisdel.c`        # Source for REDIS_DEL function
     - `redisexp.c`        # Source for REDIS_EXPIRE function (added March 12, 2025)
     - `redisttl.c`        # Source for REDIS_TTL function (added March 12, 2025)
-    - `redisping.c`       # Source for PINGREDIS function (added March 30, 2025)
+    - `redisping.c`       # Source for REDIS_PING function (added March 30, 2025)
     - `redisutils.c`      # Shared utility functions
   - `qsrvsrc/`              # Binding source files
     - `redisile.bnd`      # Binding source
