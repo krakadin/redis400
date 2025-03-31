@@ -157,20 +157,28 @@ int connect_to_redis(int *sockfd)
  */
 int extract_redis_payload(char *response, char **payload_out, size_t *length_out)
 {
-    if (response[0] == 0x4E) // EBCDIC '+' (0x5B) for SET
+    // Handle simple string responses (+<string>\r\n in EBCDIC, e.g., +PONG\r\n, +OK\r\n)
+    if (response[0] == 0x4E) // EBCDIC '+' for simple strings
     {
-        // Handle SET response (+OK\r\n in EBCDIC)
-        if (strncmp(response, "\x4E\xD6\xD2\x0D\x25", 5) == 0) // EBCDIC "OK\r\n" (split hex)
+        char *value_start = response + 1; // Skip the leading '+'
+        char *crlf = strstr(response, "\x0D\x25"); // Find EBCDIC CRLF
+        if (!crlf)
+            return -1;
+
+        size_t value_len = crlf - value_start; // Length of the string between '+' and '\r\n'
+        if (value_len > 0)
         {
-            *payload_out = (char *)malloc(4); // Size for "OK" + null
+            *payload_out = (char *)malloc(value_len + 1);
             if (*payload_out)
             {
-                strcpy(*payload_out, "\x4E\xD6\xD2"); // EBCDIC "OK"
-                *length_out = 3;                      // Length of "OK"
-                return 0;                             // Success
+                strncpy(*payload_out, value_start, value_len);
+                (*payload_out)[value_len] = '\0';
+                *length_out = value_len;
+                return 0; // Success
             }
             return -1; // Memory allocation failure
         }
+        return -1; // Invalid simple string format
     }
     // Handle GET response or other bulk replies ($<length>\r\n<payload>\r\n in EBCDIC)
     else if (response[0] == 0x5B) // EBCDIC '$' for bulk replies

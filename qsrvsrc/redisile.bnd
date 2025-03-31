@@ -5,4 +5,5 @@ STRPGMEXP SIGNATURE("Redis 1.0.0")
     EXPORT SYMBOL("delRedisKey")
     EXPORT SYMBOL("expireRedisKey")
     EXPORT SYMBOL("ttlRedisKey")
+    EXPORT SYMBOL("pingRedis")
 ENDPGMEXP

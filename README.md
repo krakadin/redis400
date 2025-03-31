@@ -10,6 +10,7 @@ This project provides Redis utility functions for IBM i, enabling seamless inter
 4. **`REDIS_DEL`**: Deletes a key from Redis. Returns 1 if the key was deleted, or 0 if the key did not exist.
 5. **`REDIS_EXPIRE`** (New as of March 12, 2025): Sets an expiration time (TTL) in seconds for a Redis key.
 6. **`REDIS_TTL`** (New as of March 12, 2025): Retrieves the remaining time-to-live (TTL) of a Redis key in seconds.
+7. **`REDIS_PING`** (New as of March 30, 2025): Sends a `PING` command to the Redis server and returns the response (`PONG`) in EBCDIC. Useful for testing connectivity to the Redis server.
 
 Built with a Makefile, the project automates compilation, binding, and deployment of these functions, making it easy to integrate Redis caching or storage into IBM i applications.
 
@@ -54,15 +55,10 @@ The project is organized as follows:
     - `redisdel.c`        # Source for REDIS_DEL function
     - `redisexp.c`        # Source for REDIS_EXPIRE function (added March 12, 2025)
     - `redisttl.c`        # Source for REDIS_TTL function (added March 12, 2025)
+    - `redisping.c`       # Source for PINGREDIS function (added March 30, 2025)
     - `redisutils.c`      # Shared utility functions
   - `qsrvsrc/`              # Binding source files
-    - `redisget.bnd`      # Binding source for REDIS_GET
-    - `redisset.bnd`      # Binding source for REDIS_SET
-    - `redisincr.bnd`     # Binding source for REDIS_INCR
-    - `redisdel.bnd`      # Binding source for REDIS_DEL
-    - `redisexp.bnd`      # Binding source for REDIS_EXPIRE (add this file)
-    - `redisttl.bnd`      # Binding source for REDIS_TTL (add this file)
-    - `redisutils.bnd`    # Binding source for shared utilities
+    - `redisile.bnd`      # Binding source
   - `include/`              # Header files
     - `redis_utils.h`     # Header for shared utilities
   - `Makefile`              # Makefile for building the project
@@ -86,6 +82,7 @@ The Makefile provides the following targets to manage the build process:
 | `redis_del.func`  | Creates or replaces the `REDIS_DEL` SQL function.                          |
 | `redis_exp.func`  | Creates or replaces the `REDIS_EXPIRE` SQL function (added March 12, 2025).|
 | `redis_ttl.func`  | Creates or replaces the `REDIS_TTL` SQL function (added March 12, 2025).   |
+| `redis_ping.func` | Creates or replaces the `REDIS_PING` SQL function (added March 30, 2025).   |
 | `clean`           | Deletes the target library and all associated objects.                     |
 
 ---
@@ -130,6 +127,7 @@ When you run `gmake`, the following steps are executed:
      - `REDISDEL`
      - `REDISEXP`
      - `REDISTTL`
+     - `REDISPING`
      - `REDISUTILS`
 
 3. **Create the Service Program (`redisile.srvpgm`)**:
@@ -137,7 +135,7 @@ When you run `gmake`, the following steps are executed:
    - The compiled modules are bound together to create the service program `REDISILE`.
 
 4. **Create the SQL Functions**:
-   - The SQL functions `REDIS_GET`, `REDIS_SET`, `REDIS_INCR`, `REDIS_DEL`, `REDIS_EXPIRE`, and `REDIS_TTL` are created or replaced in the target library.
+   - The SQL functions `REDIS_GET`, `REDIS_SET`, `REDIS_INCR`, `REDIS_DEL`, `REDIS_EXPIRE`, `REDIS_TTL` and `REDIS_PING` are created or replaced in the target library.
 
 **Note**: If the execution failes due errors in `generate_config.sh`, you may need to modify git settings `core.autocrlf`
 
@@ -159,6 +157,7 @@ After the build process completes, verify the following objects in the target li
 - `REDISDEL`
 - `REDISEXP`
 - `REDISTTL`
+- `REDISPING`
 - `REDISUTILS`
 
 ### Service Program
@@ -173,6 +172,7 @@ After the build process completes, verify the following objects in the target li
 - `REDIS_DEL`
 - `REDIS_EXPIRE`
 - `REDIS_TTL`
+- `REDIS_PING`
 
 ---
 
@@ -185,7 +185,8 @@ After the build process completes, verify the following objects in the target li
       DSPOBJD OBJ(REDIS400/REDISDEL) OBJTYPE(*MODULE)
       DSPOBJD OBJ(REDIS400/REDISEXP) OBJTYPE(*MODULE)
       DSPOBJD OBJ(REDIS400/REDISTTL) OBJTYPE(*MODULE)
-      DSPOBJD OBJ(REDIS400/REDISUTILS) OBJTYPE(\*MODULE)
+      DSPOBJD OBJ(REDIS400/REDISPING) OBJTYPE(*MODULE)
+      DSPOBJD OBJ(REDIS400/REDISUTILS) OBJTYPE(*MODULE)
    ```
 
 2. **Check Service Program**:
@@ -197,12 +198,13 @@ After the build process completes, verify the following objects in the target li
 3. **Check SQL Functions**:
 
    ```sql
-   SELECT FROM QSYS2.SYSFUNCS WHERE SPECIFIC_NAME = 'REDIS_GET');
-   SELECT FROM QSYS2.SYSFUNCS WHERE SPECIFIC_NAME = 'REDIS_SET');
-   SELECT FROM QSYS2.SYSFUNCS WHERE SPECIFIC_NAME = 'REDIS_INCR');
-   SELECT FROM QSYS2.SYSFUNCS WHERE SPECIFIC_NAME = 'REDIS_DEL');
+   SELECT * FROM QSYS2.SYSFUNCS WHERE SPECIFIC_NAME = 'REDIS_GET');
+   SELECT * FROM QSYS2.SYSFUNCS WHERE SPECIFIC_NAME = 'REDIS_SET');
+   SELECT * FROM QSYS2.SYSFUNCS WHERE SPECIFIC_NAME = 'REDIS_INCR');
+   SELECT * FROM QSYS2.SYSFUNCS WHERE SPECIFIC_NAME = 'REDIS_DEL');
    SELECT * FROM QSYS2.SYSFUNCS WHERE SPECIFIC_NAME = 'REDIS_EXPIRE';
    SELECT * FROM QSYS2.SYSFUNCS WHERE SPECIFIC_NAME = 'REDIS_TTL';
+   SELECT * FROM QSYS2.SYSFUNCS WHERE SPECIFIC_NAME = 'REDIS_PING';
    ```
 
 ## Cleaning Up
@@ -227,6 +229,7 @@ Once built, use the SQL functions in your IBM i SQL queries to interact with Red
 - Delete a Key (REDIS_DEL): Remove a key from Redis.
 - Set Expiration (REDIS_EXPIRE): Assign a time-to-live (TTL) to a key.
 - Check TTL (REDIS_TTL): Retrieve the remaining time-to-live of a key.
+- Test Connectivity (REDIS_PING): Send a PING command to verify the Redis server is responsive.
 
 ### Examples
 
@@ -270,6 +273,13 @@ SELECT REDIS_TTL('API_KEY') FROM SYSIBM.SYSDUMMY1;
 
 - Returns the remaining TTL in seconds (e.g., 298), -1 if no expiration, or -2 if the key doesn’t exist.
 
+#### Using REDIS_PING
+
+```sql
+VALUES(REDIS_PING());
+```
+
+- Returns `PONG` if the Redis server is responsive. Useful for testing connectivity.
 ### Notes
 
 Ensure the Redis server is running and accessible at `127.0.0.1:6379` (configurable in `.env`).
@@ -284,11 +294,17 @@ This section details how to configure and optimize your Redis server for use wit
 - **Installation**: Install Redis on IBM i PASE or a remote server using yum install redis in PASE, or configure a remote Redis instance.
 - **Configuration**:
   - Edit `/QOpenSys/etc/redis.conf` (if on PASE) or the Redis configuration file to bind to `127.0.0.1` and listen on port `6379`.
-  - Ensure `requirepass` is set (if password protection is needed) and update `setRedisValue` to handle authentication (e.g., `AUTH` command).
+  - **Note**: This project currently assumes an unauthenticated Redis server (i.e., `requirepass` is not set). Support for Redis authentication (`AUTH` command) may be added in a future release.
 - **Starting Redis**:
 
 ```bash
-redis-server /QOpenSys/etc/redis.conf > /dev/null 2>&1 &
+redis-server /QOpenSys/etc/redis.conf --daemonize yes
+```
+
+- **Stopping Redis**:
+
+```bash
+redis-cli SHUTDOWN
 ```
 
 - **Testing Connectivity**:
@@ -302,7 +318,8 @@ Expected output: `PONG`.
 ### Troubleshooting
 
 - If `REDIS_SET` or `REDIS_GET` fails with timeouts, verify network connectivity and increase the socket timeout in `connect_to_redis` (e.g., `timeout.tv_sec = 5`).
-  For `-ERR unknown command`, ensure the RESP format is correct (e.g., `\*3\r\n$3\r\nSET\r\n...`).
+- For `-ERR unknown command`, ensure the RESP format is correct (e.g., `\*3\r\n$3\r\nSET\r\n...`).
+- If you encounter `NOAUTH Authentication required`, the Redis server requires a password (`requirepass` is set). This project does not yet support authentication; either disable `requirepass` in `redis.conf` or use an unauthenticated Redis instance.
 
 ## License
 

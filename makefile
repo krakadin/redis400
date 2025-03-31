@@ -7,16 +7,17 @@ CCSID = 1252 # Windows, Latin 1
 
 # Targets
 all: preflight $(TGT_LIB).lib generate_config redisile.srvpgm redis_get.func redis_set.func \
-	redis_incr.func redis_del.func redis_expire.func redis_ttl.func 
+	redis_incr.func redis_del.func redis_expire.func redis_ttl.func redis_ping.func
 
 redisile.srvpgm: redisget.cle redisset.cle redisincr.cle redisdel.cle redisexp.cle redisttl.cle \
-	redisutils.cle
+	redisping.cle redisutils.cle
 redisget.cle: redisget.cmodule redisget.bnd
 redisset.cle: redisset.cmodule redisset.bnd
 redisincr.cle: redisincr.cmodule redisincr.bnd
 redisdel.cle: redisdel.cmodule redisdel.bnd
 redisexp.cle: redisexp.cmodule redisexp.bnd
 redisttl.cle: redisttl.cmodule redisttl.bnd
+redisping.cle: redisping.cmodule redisping.bnd
 redisutils.cle: redisutils.cmodule redisutils.bnd
 
 # Preflight check to ensure the target library does not exist
@@ -75,7 +76,11 @@ redis_expire.func:
 # Create or replace the SQL function for REDIS_TTL
 redis_ttl.func: redisile.srvpgm
 	-system "RUNSQL SQL('CREATE OR REPLACE FUNCTION $(TGT_LIB).REDIS_TTL (KEY VARCHAR(255)) RETURNS INTEGER LANGUAGE C SPECIFIC REDIS_TTL NOT DETERMINISTIC NO SQL RETURNS NULL ON NULL INPUT DISALLOW PARALLEL NOT FENCED EXTERNAL NAME ''$(TGT_LIB)/REDISILE(ttlRedisKey)'' PARAMETER STYLE DB2SQL') COMMIT(*NONE)"
-	
+
+# Create or replace the SQL function for redis_ping
+redis_ping.func: redisile.srvpgm
+	-system "RUNSQL SQL('CREATE OR REPLACE FUNCTION $(TGT_LIB).REDIS_PING () RETURNS VARCHAR(10) CCSID 37 LANGUAGE C SPECIFIC REDIS_PING NOT DETERMINISTIC NO SQL RETURNS NULL ON NULL INPUT DISALLOW PARALLEL NOT FENCED EXTERNAL NAME ''$(TGT_LIB)/REDISILE(pingRedis)'' PARAMETER STYLE DB2SQL') COMMIT(*NONE)"
+
 # Clean up
 clean:
 	-system "DLTLIB LIB($(TGT_LIB))"
