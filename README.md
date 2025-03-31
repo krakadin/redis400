@@ -1,4 +1,4 @@
-# Redis Utility Functions for IBM i
+# Redis SQL Functions for IBM i
 
 ## Description
 
