@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gmake:*)",
+      "Bash(make:*)",
+      "Bash(rsync:*)",
+      "Bash(sshpass:*)",
+      "Bash(ssh:*)",
+      "Bash(isql:*)",
+      "Bash(git:*)",
+      "Bash(redis-cli:*)",
+      "Bash(echo:*)",
+      "Bash(cat:*)",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)"
+    ],
+    "deny": []
+  },
+  "env": {
+    "IBM_I_HOST": "P7-deploy",
+    "IBM_I_USER": "OPS_API",
+    "IBM_I_DEPLOY_PATH": "/home/ernestr/redis400",
+    "TARGET_LIBRARY": "REDIS400",
+    "ODBC_DSN": "ISSI_P10"
+  }
+}

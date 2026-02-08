@@ -217,3 +217,29 @@ Current version does not support Redis AUTH. Either:
 - **Target**: IBM i V7.4+
 - **Redis Protocol**: RESP (REdis Serialization Protocol)
 - **Encoding**: EBCDIC ↔ ASCII translation tables
+
+## Multi-Agent Architecture
+
+This project uses specialized agents for different aspects of development.
+
+### Available Skills
+
+| Skill | Location | Expertise |
+|-------|----------|-----------|
+| Orchestrator | `.claude/skills/orchestrator/` | Coordinates all agents, delegates tasks |
+| IBM i C Developer | `.claude/skills/ibmi-c-developer/` | C programming, ILE/PASE, EBCDIC, MI, shells |
+| Tester | `.claude/skills/tester/` | Deploy to P7, build, run test suite |
+| Redis Expert | `.claude/skills/redis-expert/` | RESP protocol, commands, authentication |
+
+### Slash Commands
+
+| Command | Description |
+|---------|-------------|
+| `/deploy` | Sync and build on P7 |
+| `/test` | Run full test suite |
+
+### Agent Workflow
+
+1. **New Feature**: Redis Expert (design) → IBM i C Developer (implement) → Tester (verify)
+2. **Bug Fix**: Tester (reproduce) → IBM i C Developer (fix) → Tester (verify)
+3. **Protocol Issue**: Redis Expert (analyze) → IBM i C Developer (fix conversion)
