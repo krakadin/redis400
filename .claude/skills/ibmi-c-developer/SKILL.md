@@ -333,15 +333,93 @@ system "DSPJOBLOG"
 system "DSPMSG QSYSOPR"
 ```
 
+### IBM i Object Naming Constraints
+
+**CRITICAL: IBM i system object names are limited to 10 characters.** This affects:
+
+| Object Type | Name Limit | Example |
+|-------------|-----------|---------|
+| Library | 10 chars | `REDIS400` (8) ✓ |
+| Module | 10 chars | `REDISAPND` (9) ✓, `REDISAPPEND` (11) ✗ |
+| Service program | 10 chars | `REDISILE` (8) ✓ |
+| Source physical file | 10 chars | `QCSRC` (5) ✓ |
+| Source member | 10 chars | Based on module name |
+
+**Naming strategy for this project:**
+- Source filenames (`srcfile/*.c`) map directly to module names
+- The filename (minus `.c`) becomes the IBM i module name, uppercased
+- **Always check that the filename ≤ 10 characters before creating a new source file**
+- Use abbreviations when needed: `redisapnd.c` not `redisappend.c`, `redisexp.c` not `redisexpire.c`
+
+**Already used names and their lengths:**
+| File | Module Name | Length | Redis Command |
+|------|------------|--------|---------------|
+| `redisget.c` | REDISGET | 8 | GET |
+| `redisset.c` | REDISSET | 8 | SET |
+| `redisincr.c` | REDISINCR | 9 | INCR |
+| `redisdel.c` | REDISDEL | 8 | DEL |
+| `redisexp.c` | REDISEXP | 8 | EXPIRE |
+| `redisttl.c` | REDISTTL | 8 | TTL |
+| `redisping.c` | REDISPING | 9 | PING |
+| `redisapnd.c` | REDISAPND | 9 | APPEND |
+| `redisutils.c` | REDISUTILS | 10 | (utilities) |
+
+**Abbreviation conventions for future commands:**
+- `redis` prefix (5 chars) + abbreviated command (≤ 5 chars)
+- Examples: `redisexst` (EXISTS), `redismget` (MGET), `redismset` (MSET), `redishset` (HSET), `redishget` (HGET), `redislpsh` (LPUSH)
+
+### EBCDIC Hex Reference for RESP Commands
+
+When building RESP commands in EBCDIC, use these mappings:
+
+| ASCII | EBCDIC Hex | Usage |
+|-------|-----------|-------|
+| `*` | `\x5C` | Array prefix |
+| `$` | `\x5B` | Bulk string prefix |
+| `\r` | `\x0D` | Carriage return |
+| `\n` | `\x25` | Line feed |
+| `0-9` | `\xF0-\xF9` | Digits |
+| `A` | `\xC1` | |
+| `B` | `\xC2` | |
+| `C` | `\xC3` | |
+| `D` | `\xC4` | |
+| `E` | `\xC5` | |
+| `F` | `\xC6` | |
+| `G` | `\xC7` | |
+| `H` | `\xC8` | |
+| `I` | `\xC9` | |
+| `L` | `\xD3` | |
+| `N` | `\xD5` | |
+| `P` | `\xD7` | |
+| `R` | `\xD9` | |
+| `S` | `\xE2` | |
+| `T` | `\xE3` | |
+| `X` | `\xE7` | |
+
+**Pre-built EBCDIC RESP prefixes for implemented commands:**
+
+| Command | EBCDIC Hex |
+|---------|-----------|
+| `*1\r\n$4\r\nPING\r\n` | `\x5C\xF1\x0D\x25\x5B\xF4\x0D\x25\xD7\xC9\xD5\xC7\x0D\x25` |
+| `*2\r\n$3\r\nGET\r\n` | `\x5C\xF2\x0D\x25\x5B\xF3\x0D\x25\xC7\xC5\xE3\x0D\x25` |
+| `*3\r\n$3\r\nSET\r\n` | `\x5C\xF3\x0D\x25\x5B\xF3\x0D\x25\xE2\xC5\xE3\x0D\x25` |
+| `*2\r\n$4\r\nINCR\r\n` | `\x5C\xF2\x0D\x25\x5B\xF4\x0D\x25\xC9\xD5\xC3\xD9\x0D\x25` |
+| `*2\r\n$3\r\nDEL\r\n` | `\x5C\xF2\x0D\x25\x5B\xF3\x0D\x25\xC4\xC5\xD3\x0D\x25` |
+| `*3\r\n$6\r\nEXPIRE\r\n` | `\x5C\xF3\x0D\x25\x5B\xF6\x0D\x25\xC5\xE7\xD7\xC9\xD9\xC5\x0D\x25` |
+| `*2\r\n$3\r\nTTL\r\n` | `\x5C\xF2\x0D\x25\x5B\xF3\x0D\x25\xE3\xE3\xD3\x0D\x25` |
+| `*3\r\n$6\r\nAPPEND\r\n` | `\x5C\xF3\x0D\x25\x5B\xF6\x0D\x25\xC1\xD7\xD7\xC5\xD5\xC4\x0D\x25` |
+
 ### Common Pitfalls
 
-1. **CCSID Mismatches**: Always be explicit about character encoding
-2. **Pointer Sizes**: ILE uses 16-byte pointers, PASE uses 8-byte
-3. **Path Separators**: IFS uses `/`, QSYS uses `/QSYS.LIB/LIB.LIB/OBJ.TYPE`
-4. **Case Sensitivity**: QSYS is case-insensitive, IFS is case-sensitive
-5. **Line Endings**: IFS files may have LF, source members expect CRLF
-6. **Activation Groups**: Mismatched activation groups cause resource conflicts
-7. **Authority**: Objects need proper authority (*USE, *CHANGE, *ALL)
+1. **10-Character Object Name Limit**: Module names, library names, and other IBM i system objects are limited to 10 characters. Source filenames must respect this since they map to module names. This is the #1 mistake when adding new functions.
+2. **CCSID Mismatches**: Always be explicit about character encoding
+3. **Pointer Sizes**: ILE uses 16-byte pointers, PASE uses 8-byte
+4. **Path Separators**: IFS uses `/`, QSYS uses `/QSYS.LIB/LIB.LIB/OBJ.TYPE`
+5. **Case Sensitivity**: QSYS is case-insensitive, IFS is case-sensitive
+6. **Line Endings**: IFS files may have LF, source members expect CRLF
+7. **Activation Groups**: Mismatched activation groups cause resource conflicts
+8. **Authority**: Objects need proper authority (*USE, *CHANGE, *ALL)
+9. **PATH on SSH**: When running commands via SSH, `gmake` and other tools in `/QOpenSys/pkgs/bin/` may not be in PATH. Always use `export PATH=/QOpenSys/pkgs/bin:$PATH` or full paths.
 
 ### Project Structure Pattern
 

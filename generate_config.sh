@@ -20,8 +20,9 @@ EOF
 
 # Read .env and generate #define directives
 while IFS='=' read -r key value; do
-    # Skip empty or comment lines
+    # Skip empty, comment lines, and build-only flags
     [[ -z "$key" || "$key" =~ ^# ]] && continue
+    [[ "$key" == "USE_ICONV" ]] && continue
     # Trim whitespace
     key=$(echo "$key" | xargs)
     value=$(echo "$value" | xargs)
@@ -31,4 +32,10 @@ while IFS='=' read -r key value; do
 done < "$ENV_FILE"
 
 echo "#endif /* REDIS_CONFIG_H */" >> "$OUTPUT_HEADER"
+
+# Copy headers to srcfile/ for ILE C compiler (INCDIR doesn't work reliably
+# with quoted includes on IBM i - compiler finds headers in source dir)
+cp "$OUTPUT_HEADER" srcfile/redis_config.h
+cp include/redis_utils.h srcfile/redis_utils.h
+
 echo "Generated $OUTPUT_HEADER from $ENV_FILE"

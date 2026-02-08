@@ -261,11 +261,43 @@ int authenticate_redis(int sockfd, const char *username, const char *password) {
 
 ## Implementing New Commands
 
+### 0. Check IBM i Naming Constraints
+
+**CRITICAL**: IBM i module names are limited to 10 characters. The source filename (minus `.c`) becomes the module name.
+
+- File must be: `redis` (5 chars) + abbreviated command (≤ 5 chars) + `.c`
+- Example: `redisapnd.c` for APPEND (not `redisappend.c` — 11 chars exceeds limit)
+- The C function name inside the file has no length limit (e.g., `appendRedisValue` is fine)
+- The SQL function name also has no limit (e.g., `REDIS_APPEND` is fine)
+- Only the **module/file name** is constrained
+
 ### 1. Define RESP Format
 
 For `APPEND key value`:
 ```
 *3\r\n$6\r\nAPPEND\r\n$<keylen>\r\n<key>\r\n$<vallen>\r\n<value>\r\n
+```
+
+### EBCDIC Conversion for RESP
+
+On IBM i, RESP commands must be built in EBCDIC and converted to ASCII before sending.
+
+Key EBCDIC hex mappings:
+| ASCII | EBCDIC | Usage |
+|-------|--------|-------|
+| `*` | `\x5C` | RESP array prefix |
+| `$` | `\x5B` | RESP bulk string prefix |
+| `:` | `\x7A` | RESP integer prefix |
+| `+` | `\x4E` | RESP simple string prefix |
+| `-` | `\x60` | RESP error prefix |
+| `\r` | `\x0D` | Carriage return |
+| `\n` | `\x25` | Line feed (Note: EBCDIC LF ≠ ASCII LF) |
+| `0`-`9` | `\xF0`-`\xF9` | Digit encoding for lengths |
+
+When designing a new command, provide the complete EBCDIC hex string for the command prefix. For example, APPEND is:
+```
+"\x5C\xF3\x0D\x25\x5B\xF6\x0D\x25\xC1\xD7\xD7\xC5\xD5\xC4\x0D\x25"
+ *    3    \r   \n   $    6    \r   \n   A    P    P    E    N    D    \r   \n
 ```
 
 ### 2. C Implementation Pattern

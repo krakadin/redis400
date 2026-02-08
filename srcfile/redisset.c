@@ -9,7 +9,6 @@
  * Version: 1.0.0
  ******************************************************************************/
 
-// #define USE_ICONV 1
 #include "redis_utils.h"
 #include <stdio.h>
 #include <stdlib.h>

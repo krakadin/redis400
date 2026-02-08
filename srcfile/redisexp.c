@@ -15,6 +15,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#ifdef USE_ICONV
+#include <qtqiconv.h>
+#endif
 
 void SQL_API_FN expireRedisKey(
 	SQLUDF_VARCHAR *key, SQLUDF_INTEGER *ttl, SQLUDF_SMALLINT *result,
@@ -26,6 +29,21 @@ void SQL_API_FN expireRedisKey(
 	char ebcdic_send_buf[512], ascii_send_buf[512], recv_buf[1024], ebcdic_payload[1024];
 	char ebcdic_key_len[10] = {0}, ebcdic_ttl_len[10] = {0};
 	int len, total_len = 0;
+
+#ifdef USE_ICONV
+	if (!initialized)
+	{
+		initialize_conversion();
+		initialized = 1;
+	}
+	if (errno != 0)
+	{
+		strcpy(sqlstate, "38999");
+		strcpy(msgtext, "iconv initialization failed");
+		*resultInd = -1;
+		return;
+	}
+#endif
 
 	strncpy(sqlstate, "00000", 5);
 	sqlstate[5] = '\0';

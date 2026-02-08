@@ -43,6 +43,11 @@ echo "SELECT REDIS400.REDIS_EXPIRE('expire_test', 60) FROM SYSIBM.SYSDUMMY1" | i
 
 # TTL
 echo "SELECT REDIS400.REDIS_TTL('expire_test') FROM SYSIBM.SYSDUMMY1" | isql -v ISSI_P10 OPS_API 'ops_api'
+
+# APPEND (set, append, verify)
+echo "VALUES REDIS400.REDIS_SET('append_test', 'Hello')" | isql -v ISSI_P10 OPS_API 'ops_api'
+echo "SELECT REDIS400.REDIS_APPEND('append_test', ' World') FROM SYSIBM.SYSDUMMY1" | isql -v ISSI_P10 OPS_API 'ops_api'
+echo "SELECT REDIS400.REDIS_GET('append_test') FROM SYSIBM.SYSDUMMY1" | isql -v ISSI_P10 OPS_API 'ops_api'
 ```
 
 ### 3. Cleanup
@@ -50,6 +55,7 @@ echo "SELECT REDIS400.REDIS_TTL('expire_test') FROM SYSIBM.SYSDUMMY1" | isql -v 
 ```bash
 echo "SELECT REDIS400.REDIS_DEL('counter') FROM SYSIBM.SYSDUMMY1" | isql -v ISSI_P10 OPS_API 'ops_api'
 echo "SELECT REDIS400.REDIS_DEL('expire_test') FROM SYSIBM.SYSDUMMY1" | isql -v ISSI_P10 OPS_API 'ops_api'
+echo "SELECT REDIS400.REDIS_DEL('append_test') FROM SYSIBM.SYSDUMMY1" | isql -v ISSI_P10 OPS_API 'ops_api'
 ```
 
 ## Report Format
@@ -63,6 +69,7 @@ echo "SELECT REDIS400.REDIS_DEL('expire_test') FROM SYSIBM.SYSDUMMY1" | isql -v 
 | REDIS_DEL | 1 | | |
 | REDIS_EXPIRE | 1 | | |
 | REDIS_TTL | >0 | | |
+| REDIS_APPEND | 11 | | |
 
 ## Troubleshooting
 

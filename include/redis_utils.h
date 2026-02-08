@@ -18,7 +18,13 @@
 #include "redis_config.h" // Generated from .env
 
 #ifdef USE_ICONV
-#include <iconv.h> // Required for iconv conversion
+#include <iconv.h>    // Required for iconv conversion
+#include <qtqiconv.h> // Required for QtqIconvOpen
+
+// Global iconv conversion descriptors (cached, opened once)
+static iconv_t acd; // ASCII conversion descriptor (EBCDIC -> ASCII)
+static iconv_t ecd; // EBCDIC conversion descriptor (ASCII -> EBCDIC)
+static int initialized = 0; // Flag to track if iconv descriptors are initialized
 #endif
 
 /**********************************************************************/

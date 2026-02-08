@@ -10,7 +10,6 @@
  * Version: 1.0.0
  ******************************************************************************/
 
-// #define USE_ICONV 1
 #include "redis_utils.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -272,8 +271,15 @@ int extract_redis_payload(char *response, char **payload_out, size_t *length_out
 void initialize_conversion(void)
 {
     QtqCode_T from, to;
-    from.CCSID = 0; // Current job's EBCDIC (e.g., 37)
-    to.CCSID = 819; // ISO 8859-1 ASCII
+
+    // CRITICAL: Zero all fields before setting CCSID.
+    // QtqCode_T has reserved fields that must be 0x00 or QtqIconvOpen fails.
+    memset(&from, 0, sizeof(QtqCode_T));
+    memset(&to, 0, sizeof(QtqCode_T));
+
+    from.CCSID = 0;   // Current job's EBCDIC (auto-detects: 37, 1025, 273, etc.)
+    to.CCSID = 819;    // ISO 8859-1 ASCII
+
     errno = 0;
     acd = QtqIconvOpen(&to, &from); // EBCDIC to ASCII
     if (errno != 0)

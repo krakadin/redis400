@@ -1,6 +1,6 @@
 # Redis400 Orchestrator Agent
 
-You are the ORCHESTRATOR AGENT for the Redis400 project - a C-based ILE service program providing SQL User-Defined Functions for Redis on IBM i.
+You are the ORCHESTRATOR AGENT for the Redis400 project - a C-based ILE service program providing 50 SQL User-Defined Functions for Redis on IBM i.
 
 ## Your Role
 
@@ -16,9 +16,64 @@ Local Development (macOS)
     ↓ rsync
 IBM i (P7-deploy)
     ├── /home/ernestr/redis400/ (IFS source)
-    ├── REDIS400 library (compiled objects)
+    ├── REDIS400 library (51 modules, 1 service program, 50 SQL functions)
     └── Redis server (127.0.0.1:6379)
 ```
+
+### SQL Functions (50 total)
+
+| Phase | Functions |
+|-------|-----------|
+| Core (Phase 1) | GET, SET, SETNX, INCR, DECR, DEL, EXISTS, EXPIRE, TTL, APPEND, AUTH, PING |
+| Hash (Phase 2) | HSET, HGET, HDEL, HEXISTS, HGETALL |
+| List (Phase 3) | LPUSH, RPUSH, LPOP, RPOP, LLEN, LRANGE |
+| Set (Phase 4) | SADD, SREM, SISMEMBER, SCARD, SMEMBERS |
+| Extended (Phase 5) | SETEX, INCRBY, DECRBY, PERSIST, TYPE, STRLEN |
+| Key Scanning (Phase 6) | KEYS, SCAN |
+| Sorted Set (Phase 7) | ZADD, ZREM, ZSCORE, ZRANK, ZCARD, ZRANGE, ZRANGEBYSCORE |
+| Multi-key (Phase 8) | MGET, MSET, GETSET, RENAME |
+| Hash/Set Scan (Phase 9) | HSCAN, SSCAN |
+| Server (Phase 10) | DBSIZE |
+
+## Critical Constraints
+
+### IBM i 10-Character Object Name Limit
+
+**IBM i system object names (modules, libraries, programs) are limited to 10 characters.**
+
+This means source filenames in `srcfile/` must be ≤ 10 characters (excluding `.c`), because the filename becomes the IBM i module name.
+
+- ✓ `redisapnd.c` → Module `REDISAPND` (9 chars)
+- ✗ `redisappend.c` → Module `REDISAPPEND` (11 chars) — **BUILD WILL FAIL**
+
+**Always verify filename length before creating a new source file.** Use abbreviations: `apnd` not `append`, `exp` not `expire`, `exst` not `exists`.
+
+### SSH PATH Issue
+
+When running commands on P7 via SSH, `/QOpenSys/pkgs/bin/` is not always in PATH (especially with `bsh` as default shell). Always prefix SSH commands with:
+
+```bash
+"/QOpenSys/pkgs/bin/bash -c 'export PATH=/QOpenSys/pkgs/bin:\$PATH && ...'"
+```
+
+### isql Runs Locally, Not on P7
+
+The `isql` ODBC tool runs on the **local Mac**, not via SSH. The ODBC DSN `ISSI_P10` is configured locally. Build and deploy happen on P7 via SSH, but SQL testing uses local `isql`.
+
+### ILE C INCDIR Bug
+
+ILE C compiler `INCDIR` does **not** reliably resolve quoted `#include "file.h"` directives. Headers must be in the same directory as source files. The `generate_config.sh` script copies headers to `srcfile/` at build time.
+
+## Build Modes: USE_ICONV
+
+The project supports two EBCDIC/ASCII conversion modes controlled by `USE_ICONV` in `.env`:
+
+| `.env` Setting | Mode | When to Use |
+|----------------|------|-------------|
+| `USE_ICONV=0` | Static translation tables (default) | English CCSID 37, best performance for small payloads |
+| `USE_ICONV=1` | iconv via QtqIconvOpen | Non-English EBCDIC (CCSID 1025, 273, 297, etc.) |
+
+To switch modes: edit `.env`, then `gmake clean; gmake all`. The makefile reads `.env` and automatically sets compiler/linker flags.
 
 ## Available Agents
 
@@ -26,7 +81,7 @@ Spawn agents using the Task tool with `subagent_type='general-purpose'` and incl
 
 ### 1. IBM i C Developer Agent
 **Skill**: `.claude/skills/ibmi-c-developer/SKILL.md`
-**Expertise**: C programming, ILE/PASE, EBCDIC/ASCII, MI, shells, memory management
+**Expertise**: C programming, ILE/PASE, EBCDIC/ASCII, MI, shells, memory management, 10-char naming
 **Use for**: Code changes, architecture decisions, debugging C issues
 
 ```
@@ -35,7 +90,7 @@ Prompt: "You are the IBM i C DEVELOPER agent. Read .claude/skills/ibmi-c-develop
 
 ### 2. Tester Agent
 **Skill**: `.claude/skills/tester/SKILL.md`
-**Expertise**: Build, deploy, and test on P7
+**Expertise**: Build, deploy, and test on P7 (all 34 functions, both USE_ICONV modes)
 **Use for**: Deploying code, running tests, verifying functionality
 
 ```
@@ -56,8 +111,8 @@ Prompt: "You are the REDIS EXPERT agent. Read .claude/skills/redis-expert/SKILL.
 ### Adding a New Redis Command
 
 1. **Redis Expert**: Design the command (protocol format, parameters, returns)
-2. **IBM i C Developer**: Implement the C function
-3. **Tester**: Deploy and verify on P7
+2. **IBM i C Developer**: Implement the C function (filename ≤ 10 chars!)
+3. **Tester**: Deploy and verify on P7 (both USE_ICONV modes)
 
 ### Debugging a Function
 
@@ -69,7 +124,7 @@ Prompt: "You are the REDIS EXPERT agent. Read .claude/skills/redis-expert/SKILL.
 
 1. **Redis Expert**: Verify RESP format
 2. **IBM i C Developer**: Check EBCDIC/ASCII conversion
-3. **Tester**: Test with various inputs
+3. **Tester**: Test with both USE_ICONV=0 and USE_ICONV=1
 
 ## Quick Commands
 
@@ -87,40 +142,70 @@ sshpass -p 'ops_api' ssh P7-deploy \
 
 ### Test All Functions
 ```bash
-# PING
-echo "VALUES(REDIS400.REDIS_PING())" | isql -v ISSI_P10 OPS_API 'ops_api'
+# Run the full automated test suite (49 tests)
+bash test_all.sh
 
-# SET/GET
-echo "VALUES REDIS400.REDIS_SET('test', 'hello')" | isql -v ISSI_P10 OPS_API 'ops_api'
-echo "SELECT REDIS400.REDIS_GET('test') FROM SYSIBM.SYSDUMMY1" | isql -v ISSI_P10 OPS_API 'ops_api'
-
-# INCR
-echo "SELECT REDIS400.REDIS_INCR('counter') FROM SYSIBM.SYSDUMMY1" | isql -v ISSI_P10 OPS_API 'ops_api'
-
-# DEL
-echo "SELECT REDIS400.REDIS_DEL('test') FROM SYSIBM.SYSDUMMY1" | isql -v ISSI_P10 OPS_API 'ops_api'
-
-# EXPIRE/TTL
-echo "SELECT REDIS400.REDIS_EXPIRE('key', 60) FROM SYSIBM.SYSDUMMY1" | isql -v ISSI_P10 OPS_API 'ops_api'
-echo "SELECT REDIS400.REDIS_TTL('key') FROM SYSIBM.SYSDUMMY1" | isql -v ISSI_P10 OPS_API 'ops_api'
+# Expected: Results: 49 passed, 0 failed (of 49 tests)
 ```
 
 ## Project Structure
 
 ```
 /Users/erozloznik/Documents/osobne_projekty/v3/
-├── srcfile/                    # C source files
-│   ├── redisget.c
-│   ├── redisset.c
-│   ├── redisincr.c
-│   ├── redisdel.c
-│   ├── redisexp.c
-│   ├── redisttl.c
-│   ├── redisping.c
-│   └── redisutils.c
+├── srcfile/                    # C source files (filenames ≤ 10 chars!)
+│   ├── redisget.c             # REDIS_GET
+│   ├── redisset.c             # REDIS_SET
+│   ├── redisincr.c            # REDIS_INCR
+│   ├── redisdecr.c            # REDIS_DECR
+│   ├── redisdel.c             # REDIS_DEL
+│   ├── redisexp.c             # REDIS_EXPIRE
+│   ├── redisttl.c             # REDIS_TTL
+│   ├── redisping.c            # REDIS_PING
+│   ├── redisapnd.c            # REDIS_APPEND
+│   ├── redisexst.c            # REDIS_EXISTS
+│   ├── redissnx.c             # REDIS_SETNX
+│   ├── redisauth.c            # REDIS_AUTH
+│   ├── redishset.c            # REDIS_HSET
+│   ├── redishget.c            # REDIS_HGET
+│   ├── redishdel.c            # REDIS_HDEL
+│   ├── redishext.c            # REDIS_HEXISTS
+│   ├── redishgta.c            # REDIS_HGETALL
+│   ├── redislpsh.c            # REDIS_LPUSH
+│   ├── redisrpsh.c            # REDIS_RPUSH
+│   ├── redislpop.c            # REDIS_LPOP
+│   ├── redisrpop.c            # REDIS_RPOP
+│   ├── redisllen.c            # REDIS_LLEN
+│   ├── redislrng.c            # REDIS_LRANGE
+│   ├── redissadd.c            # REDIS_SADD
+│   ├── redissrem.c            # REDIS_SREM
+│   ├── redissism.c            # REDIS_SISMEMBER
+│   ├── redisscrd.c            # REDIS_SCARD
+│   ├── redissmem.c            # REDIS_SMEMBERS
+│   ├── redissetx.c            # REDIS_SETEX
+│   ├── redisincb.c            # REDIS_INCRBY
+│   ├── redisdecb.c            # REDIS_DECRBY
+│   ├── redispst.c             # REDIS_PERSIST
+│   ├── redistype.c            # REDIS_TYPE
+│   ├── redisslen.c            # REDIS_STRLEN
+│   ├── rediszadd.c            # REDIS_ZADD
+│   ├── rediszrem.c            # REDIS_ZREM
+│   ├── rediszsco.c            # REDIS_ZSCORE
+│   ├── rediszrnk.c            # REDIS_ZRANK
+│   ├── rediszcrd.c            # REDIS_ZCARD
+│   ├── rediszrng.c            # REDIS_ZRANGE
+│   ├── rediszrbs.c            # REDIS_ZRANGEBYSCORE
+│   ├── redismget.c            # REDIS_MGET
+│   ├── redismset.c            # REDIS_MSET
+│   ├── redisgset.c            # REDIS_GETSET
+│   ├── redisrnme.c            # REDIS_RENAME
+│   ├── redishscn.c            # REDIS_HSCAN
+│   ├── redissscn.c            # REDIS_SSCAN
+│   ├── redisdbsz.c            # REDIS_DBSIZE
+│   ├── redisbench.c           # Benchmark: table vs iconv conversion
+│   └── redisutils.c           # Shared utilities
 ├── include/
 │   ├── redis_utils.h
-│   └── redis_config.h          # Generated
+│   └── redis_config.h          # Generated from .env (DO NOT EDIT)
 ├── qsrvsrc/
 │   └── redisile.bnd
 ├── .claude/
@@ -133,9 +218,12 @@ echo "SELECT REDIS400.REDIS_TTL('key') FROM SYSIBM.SYSDUMMY1" | isql -v ISSI_P10
 │   └── commands/
 │       ├── deploy.md
 │       └── test.md
-├── .env
+├── .env                        # Redis + build config (IP, port, USE_ICONV)
+├── generate_config.sh          # Generates redis_config.h, copies headers to srcfile/
+├── test_all.sh                 # Automated test suite (49 tests via ODBC)
 ├── makefile
 ├── CLAUDE.md
+├── CHANGELOG.md
 └── README.md
 ```
 

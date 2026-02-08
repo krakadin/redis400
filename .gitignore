@@ -1,1 +1,7 @@
 .vscode
+# Generated copies of headers (originals in include/)
+srcfile/redis_utils.h
+srcfile/redis_config.h
+include/redis_config.h
+# Local Claude Code settings (user-specific)
+.claude/settings.local.json

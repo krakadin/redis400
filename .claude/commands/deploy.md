@@ -26,6 +26,12 @@ sshpass -p 'ops_api' ssh -o StrictHostKeyChecking=no P7-deploy \
 
 ## Expected Output
 
-- 8 modules compiled (REDISGET, REDISSET, REDISINCR, REDISDEL, REDISEXP, REDISTTL, REDISPING, REDISUTILS)
+- 9 modules compiled (REDISGET, REDISSET, REDISINCR, REDISDEL, REDISEXP, REDISTTL, REDISPING, REDISAPND, REDISUTILS)
 - Service program REDISILE created
-- 7 SQL functions registered
+- 8 SQL functions registered (REDIS_GET, REDIS_SET, REDIS_INCR, REDIS_DEL, REDIS_EXPIRE, REDIS_TTL, REDIS_PING, REDIS_APPEND)
+- IOT/Abort trap messages during `clean` phase are normal (library didn't exist yet)
+
+## Notes
+
+- `gmake` must be invoked with full PATH: `export PATH=/QOpenSys/pkgs/bin:$PATH`
+- IBM i module names are limited to 10 characters — source filenames must respect this
